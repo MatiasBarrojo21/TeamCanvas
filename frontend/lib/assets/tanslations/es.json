@@ -1,0 +1,8 @@
+{
+  "login": "Iniciar sesión",
+  "register": "Registrarse",
+  "email": "Correo electrónico",
+  "password": "Contraseña",
+  "name": "Nombre",
+  "logout": "Cerrar sesión"
+}
