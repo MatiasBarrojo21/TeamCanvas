@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "885544570095",
+    "project_id": "teamcanvas-mvp",
+    "storage_bucket": "teamcanvas-mvp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:885544570095:android:f73cdf7468dc6d8817df1a",
+        "android_client_info": {
+          "package_name": "com.matias.teamcanvas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3q43xJwGKpnFCJadEfP3RxOTmdzHrQYA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
