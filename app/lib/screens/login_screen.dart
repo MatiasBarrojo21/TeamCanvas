@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:teamcanvas/widgets/auth_form.dart'; // Cambiado
-import 'package:teamcanvas/services/auth_service.dart'; // Cambiado
 import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
+import '../widgets/auth_form.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,15 +18,17 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final auth = Provider.of<AuthService>(context, listen: false);
       await auth.login(email, password);
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home');
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (!mounted) return;
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+    if (mounted) {
       setState(() => _isLoading = false);
     }
   }
