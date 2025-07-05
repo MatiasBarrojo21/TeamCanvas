@@ -12,14 +12,31 @@ class BoardScreen extends StatefulWidget {
 }
 
 class _BoardScreenState extends State<BoardScreen> {
-  late final String boardId;
-  late final FirestoreService firestore;
+  late String boardId;
+  late FirestoreService firestoreService;
+  late List<DocumentSnapshot> tasks = [];
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     boardId = ModalRoute.of(context)!.settings.arguments as String;
-    firestore = Provider.of<FirestoreService>(context);
+    firestoreService = Provider.of<FirestoreService>(context);
+  }
+
+  Future<void> _reorderTasks(int oldIndex, int newIndex) async {
+    if (oldIndex != newIndex) {
+      final reorderedTasks = List<DocumentSnapshot>.from(tasks);
+      final task = reorderedTasks.removeAt(oldIndex);
+      reorderedTasks.insert(newIndex, task);
+
+      setState(() => tasks = reorderedTasks);
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (int i = 0; i < reorderedTasks.length; i++) {
+        batch.update(reorderedTasks[i].reference, {'order': i});
+      }
+      await batch.commit();
+    }
   }
 
   @override
@@ -30,12 +47,12 @@ class _BoardScreenState extends State<BoardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: _showAddTaskDialog,
+            onPressed: () => _showAddTaskDialog(context),
           ),
         ],
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: firestore.getTasks(boardId),
+        stream: firestoreService.getTasks(boardId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -45,29 +62,33 @@ class _BoardScreenState extends State<BoardScreen> {
             return const Center(child: Text('No hay tareas en este tablero'));
           }
 
-          return ListView.builder(
+          tasks = snapshot.data!.docs;
+
+          return ReorderableListView(
+            onReorder: _reorderTasks,
             padding: const EdgeInsets.all(8),
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder: (ctx, index) {
-              final task = snapshot.data!.docs[index];
+            children: tasks.map((task) {
+              final taskId = task.id;
               return TaskItem(
+                key: Key(taskId),
                 task: task,
-                onDelete: () => firestore.deleteTask(boardId, task.id),
-                onToggle: (value) => firestore.updateTaskStatus(
+                onDelete: () => firestoreService.deleteTask(boardId, taskId),
+                onToggle: (value) => firestoreService.updateTaskStatus(
                   boardId,
-                  task.id,
+                  taskId,
                   value ?? false,
                 ),
               );
-            },
+            }).toList(),
           );
         },
       ),
     );
   }
 
-  Future<void> _showAddTaskDialog() async {
+  Future<void> _showAddTaskDialog(BuildContext context) async {
     final taskNameController = TextEditingController();
+    final currentContext = this.context;
 
     await showDialog(
       context: context,
@@ -85,11 +106,12 @@ class _BoardScreenState extends State<BoardScreen> {
           TextButton(
             onPressed: () async {
               if (taskNameController.text.trim().isNotEmpty) {
-                await firestore.addTask(
+                await firestoreService.addTask(
                   boardId,
                   taskNameController.text.trim(),
+                  order: tasks.length,
                 );
-                if (mounted) Navigator.pop(context);
+                if (mounted) Navigator.pop(currentContext);
               }
             },
             child: const Text('Agregar'),

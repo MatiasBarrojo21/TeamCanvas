@@ -1,12 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  User? get getCurrentUser =>
-      _auth.currentUser; // Añade esto dentro de la clase AuthService
 
-  // Flujo de Login
+  User? get getCurrentUser => _auth.currentUser;
+
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+
   Future<User?> login(String email, String password) async {
     try {
       final userCredential = await _auth.signInWithEmailAndPassword(
@@ -15,12 +15,10 @@ class AuthService {
       );
       return userCredential.user;
     } on FirebaseAuthException catch (e) {
-      debugPrint('Login error: ${e.code}');
       throw _authErrorMapper(e.code);
     }
   }
 
-  // Flujo de Registro
   Future<User?> register(String email, String password) async {
     try {
       final userCredential = await _auth.createUserWithEmailAndPassword(
@@ -29,24 +27,23 @@ class AuthService {
       );
       return userCredential.user;
     } on FirebaseAuthException catch (e) {
-      debugPrint('Register error: ${e.code}');
       throw _authErrorMapper(e.code);
     }
   }
 
-  // Cerrar sesión
-  Future<void> signOut() async {
-    await _auth.signOut();
+  Future<void> signOut() async => await _auth.signOut();
+
+  Future<void> updateProfile({String? name, String? photoUrl}) async {
+    await _auth.currentUser?.updateDisplayName(name);
+    if (photoUrl != null) {
+      await _auth.currentUser?.updatePhotoURL(photoUrl);
+    }
   }
 
-  // Escucha cambios de autenticación
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  // Mapeador de errores
   String _authErrorMapper(String code) {
     switch (code) {
       case 'invalid-email':
-        return 'Correo electrónico inválido';
+        return 'Correo inválido';
       case 'user-disabled':
         return 'Usuario deshabilitado';
       case 'user-not-found':
@@ -54,11 +51,11 @@ class AuthService {
       case 'wrong-password':
         return 'Contraseña incorrecta';
       case 'email-already-in-use':
-        return 'El correo ya está en uso';
+        return 'Correo ya registrado';
       case 'operation-not-allowed':
         return 'Operación no permitida';
       case 'weak-password':
-        return 'Contraseña demasiado débil';
+        return 'Contraseña débil (mínimo 6 caracteres)';
       default:
         return 'Error desconocido';
     }

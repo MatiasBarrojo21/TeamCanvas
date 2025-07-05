@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
-import 'package:teamcanvas/screens/home_screen.dart'; // Cambiado
-import 'package:teamcanvas/screens/login_screen.dart'; // Cambiado
-import 'package:teamcanvas/services/auth_service.dart'; // Cambiado
-import 'package:teamcanvas/services/firestore_service.dart'; // Cambiado
+import 'package:teamcanvas/screens/home_screen.dart';
+import 'package:teamcanvas/screens/login_screen.dart';
+import 'package:teamcanvas/screens/board_screen.dart';
+import 'package:teamcanvas/screens/profile_screen.dart';
+import 'package:teamcanvas/services/auth_service.dart';
+import 'package:teamcanvas/services/firestore_service.dart';
+import 'package:teamcanvas/services/notification_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await NotificationService.init();
+
   runApp(
     MultiProvider(
       providers: [
@@ -37,6 +44,8 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
+        '/board': (context) => const BoardScreen(),
+        '/profile': (context) => const ProfileScreen(),
       },
     );
   }

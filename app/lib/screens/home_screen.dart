@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:teamcanvas/screens/profile_screen.dart';
 import 'package:teamcanvas/services/auth_service.dart';
 import 'package:teamcanvas/services/firestore_service.dart';
 import 'package:teamcanvas/widgets/board_card.dart';
@@ -13,6 +14,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  late String _searchQuery = '';
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthService>(context);
@@ -27,8 +37,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mis Tableros'),
+        title: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: 'Buscar tableros...',
+            border: InputBorder.none,
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.clear),
+              onPressed: () {
+                _searchController.clear();
+                setState(() => _searchQuery = '');
+              },
+            ),
+          ),
+          onChanged: (value) =>
+              setState(() => _searchQuery = value.toLowerCase()),
+        ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -44,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: const Icon(Icons.add),
         onPressed: () => _showCreateBoardDialog(context, firestore, userId),
       ),
-      body: StreamBuilder<QuerySnapshot>(
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: firestore.getUserBoards(userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -55,7 +87,14 @@ class _HomeScreenState extends State<HomeScreen> {
             return const Center(child: Text('No hay tableros creados'));
           }
 
-          final boards = snapshot.data!.docs;
+          final boards = snapshot.data!.docs.where((board) {
+            final name = board['name']?.toString().toLowerCase() ?? '';
+            return name.contains(_searchQuery);
+          }).toList();
+
+          if (boards.isEmpty) {
+            return const Center(child: Text('No se encontraron resultados'));
+          }
 
           return Padding(
             padding: const EdgeInsets.all(8.0),
@@ -67,7 +106,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 childAspectRatio: 1.2,
               ),
               itemCount: boards.length,
-              itemBuilder: (ctx, index) => BoardCard(board: boards[index]),
+              itemBuilder: (ctx, index) => BoardCard(
+                board: boards[index],
+              ), // Pasar el documento completo
             ),
           );
         },
@@ -81,6 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String userId,
   ) async {
     final boardNameController = TextEditingController();
+    final currentContext = this.context;
 
     await showDialog(
       context: context,
@@ -102,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   boardNameController.text.trim(),
                   userId,
                 );
-                if (mounted) Navigator.pop(context);
+                if (mounted) Navigator.pop(currentContext);
               }
             },
             child: const Text('Crear'),
@@ -110,5 +152,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 }

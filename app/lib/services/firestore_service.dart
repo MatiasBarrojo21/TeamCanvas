@@ -3,43 +3,47 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Operaciones con Tableros
-  Future<void> createBoard(String name, String userId) async {
-    await _firestore.collection('boards').add({
-      'name': name,
-      'ownerId': userId,
-      'createdAt': FieldValue.serverTimestamp(),
-      'members': [userId],
-      'taskCount': 0,
-    });
-  }
-
-  Stream<QuerySnapshot> getUserBoards(String userId) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> getUserBoards(String userId) {
     return _firestore
         .collection('boards')
         .where('members', arrayContains: userId)
-        .orderBy('createdAt', descending: true)
+        .withConverter<Map<String, dynamic>>(
+          fromFirestore: (snapshot, _) => snapshot.data()!,
+          toFirestore: (data, _) => data,
+        )
         .snapshots();
   }
 
-  // Operaciones con Tareas
-  Future<void> addTask(String boardId, String title) async {
-    await _firestore.collection('boards/$boardId/tasks').add({
+  // Resto de tus métodos...
+  Stream<QuerySnapshot<Map<String, dynamic>>> getTasks(String boardId) {
+    return _firestore
+        .collection('boards')
+        .doc(boardId)
+        .collection('tasks')
+        .orderBy('order')
+        .withConverter<Map<String, dynamic>>(
+          fromFirestore: (snapshot, _) => snapshot.data()!,
+          toFirestore: (data, _) => data,
+        )
+        .snapshots();
+  }
+
+  Future<void> addTask(String boardId, String title, {int order = 0}) async {
+    await _firestore.collection('boards').doc(boardId).collection('tasks').add({
       'title': title,
       'completed': false,
+      'order': order,
       'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    await _firestore.collection('boards').doc(boardId).update({
-      'taskCount': FieldValue.increment(1),
     });
   }
 
-  Stream<QuerySnapshot> getTasks(String boardId) {
-    return _firestore
-        .collection('boards/$boardId/tasks')
-        .orderBy('createdAt')
-        .snapshots();
+  Future<void> createBoard(String name, String userId) async {
+    await _firestore.collection('boards').add({
+      'name': name,
+      'createdBy': userId,
+      'members': [userId],
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> updateTaskStatus(
@@ -47,15 +51,20 @@ class FirestoreService {
     String taskId,
     bool completed,
   ) async {
-    await _firestore.collection('boards/$boardId/tasks').doc(taskId).update({
-      'completed': completed,
-    });
+    await _firestore
+        .collection('boards')
+        .doc(boardId)
+        .collection('tasks')
+        .doc(taskId)
+        .update({'completed': completed});
   }
 
   Future<void> deleteTask(String boardId, String taskId) async {
-    await _firestore.collection('boards/$boardId/tasks').doc(taskId).delete();
-    await _firestore.collection('boards').doc(boardId).update({
-      'taskCount': FieldValue.increment(-1),
-    });
+    await _firestore
+        .collection('boards')
+        .doc(boardId)
+        .collection('tasks')
+        .doc(taskId)
+        .delete();
   }
 }
